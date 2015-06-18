@@ -145,7 +145,7 @@ apa_barplot <- function(
 
   ## Adjust ylim to hight of error bars
   if(is.null(ellipsis$ylim)) {
-    ellipsis$ylim <- c(min(0, yy[, dv] + ee[, dv]), max(yy[, dv] - ee[, dv]))
+    ellipsis$ylim <- c(min(0, yy[, dv] + ee[, dv]), max(0, yy[, dv] - ee[, dv]))
   }
 
 
