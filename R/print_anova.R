@@ -142,7 +142,6 @@ print_anova <- function(
     paste0("$F", op, y["df"], ", ", y["df_res"], cp, " = ", y["statistic"], "$, $p ", y["p.value"], "$")
   })
 
-<<<<<<< HEAD
   if(!is.null(es)) {
     apa_res$est <- apply(x, 1, function(y) {
       apa_est <- c()
@@ -152,23 +151,11 @@ print_anova <- function(
       if("ges" %in% es) {
         apa_est <- c(apa_est, paste0("$\\eta^2_G = ", y["ges"], "$"))
       }
+      if("es" %in% es) {
+        apa_est <- c(apa_est, paste0("$\\eta^2 = ", y["es"], "$"))
+      }
       apa_est <- paste(apa_est, collapse = ", ")
     })
-=======
-  apa_res$est <- apply(x, 1, function(y) {
-    apa_est <- c()
-    if("pes" %in% es) {
-      apa_est <- c(apa_est, paste0("$\\eta^2_p = ", y["pes"], "$"))
-    }
-    if("ges" %in% es) {
-      apa_est <- c(apa_est, paste0("$\\eta^2_G = ", y["ges"], "$"))
-    }
-    if("es" %in% es) {
-      apa_est <- c(apa_est, paste0("$\\eta^2 = ", y["es"], "$"))
-    }
-    apa_est <- paste(apa_est, collapse = ", ")
-  })
->>>>>>> bf2dd057026db76c672ec571a7ae572a9e480c75
 
     apa_res$full <- paste(apa_res$stat, apa_res$est, sep = ", ")
 
