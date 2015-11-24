@@ -8,22 +8,13 @@
 #' @param es Character. The effect-size measure to be calculated; can be either \code{ges} for generalized eta-squared or \code{pes} for partial eta-squared.
 #' @param observed Character. The names of the factors that are observed, (i.e., not manipulated). Necessary for calculation of generalized eta-squared; otherwise ignored.
 #' @param correction Character. In the case of repeated-measures ANOVA, the type of sphericity correction to be used. Either \code{GG} for Greenhouse-Geisser or \code{HF} for Huyn-Feldt methods or \code{none} is also possible.
+#' @param intercept Logical. Indicates if intercept test should be included in output.
 #' @param in_paren Logical. Indicates if the formated string will be reported inside parentheses. See details.
 #' @param models List. List containing fitted \code{lm}- objects that were compared using \code{anova()}. If the list is named, element names are used as model names in the ouptut object.
 #' @param ci Numeric. Confidence level for the confidence interval for \eqn{\Delta R^2} if \code{x} is a model comparison object of class \code{anova}. If \code{ci = NULL} no confidence intervals are estimated.
 #' @param boot_samples Numeric. Number of bootstrap samples to estimate confidence intervals for \eqn{\Delta R^2} if \code{x} is a model comparison object of class \code{anova}; ignored if \code{ci = NULL}.
 #' @param ... Additional arguments passed to or from other methods.
 #' @details
-#'    Currently, methods for the following objects are available:
-#'    \itemize{
-#'      \item{\code{aov}}
-#'      \item{\code{summary.aov}}
-#'      \item{\code{aovlist}}
-#'      \item{\code{summary.aovlist}}
-#'      \item{\code{anova}}
-#'      \item{\code{Anova.mlm}}
-#'    }
-#'
 #'    The factor names are sanitized to facilitate their use as list names (see Value section). Parentheses
 #'    are omitted and other non-word characters are replaced by \code{_}.
 #'
@@ -36,8 +27,9 @@
 #'    the number of predictors \eqn{p}, their distribution, and the sample size \eqn{n}:
 #'
 #'    \emph{"When the predictor distribution is multivariate normal, one can obtain accurate CIs for \eqn{\rho^2} with
-#'    \eqn{n \geq 50} when \eqn{p = 3}. For \eqn{p = 6} and for \eqn{p = 9}, \eqn{n \geq 100} is advisable. When the
-#'    predictor distribution is nonnormal in form, sample size requirements vary with type of nonnormality." (p. 939)}
+#'    \eqn{n \geq~50} when \eqn{p = 3}. For \eqn{p = 6} and for \eqn{p = 9}, \eqn{n \geq~100} is advisable. When the
+#'    predictor distribution is nonnormal in form, sample size requirements vary with type of nonnormality." (p. 939,
+#'    Algina, Keselman & Penfield, 2010)}
 #' @return
 #'    \code{apa_print.aov} and related functions return a named list containing the following components according to the input:
 #'
@@ -110,10 +102,10 @@ apa_print.summary.aovlist <- function(x, ...) {
 #' @method apa_print Anova.mlm
 #' @export
 
-apa_print.Anova.mlm <- function(x, correction = "GG", ...) {
+apa_print.Anova.mlm <- function(x, correction = "GG", intercept = FALSE, ...) {
   summary_x <- summary(x, multivariate = FALSE) # car:::summary.Anova.mlm
 
-  apa_print(summary_x, correction = correction, ...)
+  apa_print(summary_x, correction = correction, intercept = intercept, ...)
 }
 
 
@@ -121,10 +113,10 @@ apa_print.Anova.mlm <- function(x, correction = "GG", ...) {
 #' @method apa_print summary.Anova.mlm
 #' @export
 
-apa_print.summary.Anova.mlm <- function(x, correction = "GG", ...) {
+apa_print.summary.Anova.mlm <- function(x, correction = "GG", intercept = FALSE, ...) {
   variance_table <- arrange_anova(x, correction)
 
-  print_anova(variance_table, ...)
+  print_anova(variance_table, intercept = intercept, ...)
 }
 
 
@@ -132,12 +124,19 @@ apa_print.summary.Anova.mlm <- function(x, correction = "GG", ...) {
 #' @method apa_print afex_aov
 #' @export
 
-apa_print.afex_aov <- function(x, correction = "GG", ...) {
+apa_print.afex_aov <- function(x, correction = "GG", intercept = FALSE, ...) {
+  validate(intercept, check_class = "logical", check_length = 1)
+
+  afex_aov_intercept <- "(Intercept)" %in% rownames(x$anova_table)
+  if(afex_aov_intercept != intercept & afex_aov_intercept) {
+    warning("In your call of afex::aov_car() you requested the intercept term, but now you did not (in apa_print 'intercept = FALSE' is the default). Thus, the intercept term will be omitted; make sure this is what you want.")
+  }
+
   if("Anova.mlm" %in% class(x$Anova)) {
     summary_x <- summary(x$Anova)
-    apa_print(summary_x, correction = correction, ...)
+    apa_print(summary_x, correction = correction, intercept = intercept, ...)
   } else {
-    apa_print(x$Anova, ...)
+    apa_print(x$Anova, intercept = intercept, ...)
   }
 }
 
