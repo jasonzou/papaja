@@ -49,8 +49,12 @@ print_anova <- function(
 
   validate(intercept, check_class = "logical", check_length = 1)
   if(!is.null(observed)) validate(observed, check_class = "character")
-  validate(es, check_class = "character")
-  if(!all(es %in% c("pes", "ges", "es"))) stop("Requested effect size measure(s) currently not supported: ", paste(es, collapse = ", "), ".")
+
+  if(!is.null(es)) {
+    validate(es, check_class = "character")
+    if(!all(es %in% c("pes", "ges", "es"))) stop("Requested effect size measure(s) currently not supported: ", paste(es, collapse = ", "), ".")
+  }
+
   validate(in_paren, check_class = "logical", check_length = 1)
 
   if(in_paren) {
@@ -103,7 +107,7 @@ print_anova <- function(
   x$statistic <- printnum(x$statistic, digits = 2)
   x$p.value <- printp(x$p.value)
   x[, c("df", "df_res")] <- apply(x[, c("df", "df_res")],  c(1, 2), function(y) as.character(round(y, digits = 2)))
-  x[, es] <- printnum(x[, es], digits = 3, margin = 2, gt1 = FALSE)
+  if(!is.null(es)) x[, es] <- printnum(x[, es], digits = 3, margin = 2, gt1 = FALSE)
   x$MSE <- printnum(x$MSE, digits =2)
 
 
@@ -143,6 +147,8 @@ print_anova <- function(
     paste0("$F", op, y["df"], ", ", y["df_res"], cp, " = ", y["statistic"], "$, $p ", y["p.value"], "$")
   })
 
+
+  if(!is.null(es)) {
   apa_res$est <- apply(x, 1, function(y) {
     apa_est <- c()
     if("pes" %in% es) {
@@ -157,10 +163,12 @@ print_anova <- function(
     apa_est <- paste(apa_est, collapse = ", ")
   })
 
-  apa_res$full <- paste(apa_res$stat, apa_res$est, sep = ", ")
 
-  names(apa_res$full) <- names(apa_res$est)
-  apa_res <- lapply(apa_res, as.list)
+    apa_res$full <- paste(apa_res$stat, apa_res$est, sep = ", ")
+
+    names(apa_res$full) <- names(apa_res$est)
+    apa_res <- lapply(apa_res, as.list)
+  }
   apa_res$table <- as.data.frame(anova_table)
   apa_res
 }
