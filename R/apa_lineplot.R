@@ -99,6 +99,7 @@ apa_lineplot <- function(
                          , dv = dv
                          , factors = factors
                          , intercept = intercept
+                         , reference = NULL
                        )
                        , set.if.null = list(
                          args.axis = args_axis
@@ -142,7 +143,7 @@ apa_lineplot <- function(
   data <- data[, c(id, factors, dv)]
 
   if(is.null(ellipsis$jit)){
-    ellipsis$jit <- .4
+    ellipsis$jit <- .1
   }
 
   if(use_dplyr) {
@@ -235,12 +236,20 @@ apa_lineplot <- function(
     }
   }
 
-  output$yy <- yy
-  output$ee <- ee
+  tmp1 <- yy
+  tmp2 <- ee
+  colnames(tmp1)[which(colnames(tmp1)==dv)] <- "tendency"
+  colnames(tmp2)[which(colnames(tmp2)==dv)] <- "dispersion"
+
+  y.values <- merge(tmp1, tmp2, by = factors)
+
+  output$y <- y.values
+
+
 
   ## Adjust ylim to height of error bars
   if(is.null(ellipsis$ylim)) {
-    ellipsis$ylim <- c(min(0, yy[, dv] - ee[, dv]), max(yy[, dv] + ee[, dv]))
+    ellipsis$ylim <- c(min(0, y.values[, "tendency"] - y.values[, "dispersion"]), max(y.values[, "tendency"] + y.values[, "dispersion"]))
   }
 
   ## One factor
@@ -252,8 +261,7 @@ apa_lineplot <- function(
     ellipsis <- defaults(
       ellipsis
       , set = list(
-        yy = yy
-        , ee = ee
+        y.values = y.values
       )
       , set.if.null = list(
 
@@ -294,12 +302,11 @@ apa_lineplot <- function(
 
     names(ellipsis$args.legend$plot) <- levels(data[[factors[3]]])
 
-    for (i in levels(yy[[factors[3]]])) {
+    for (i in levels(y.values[[factors[3]]])) {
 
       ellipsis.i <- defaults(ellipsis, set = list(
         main = paste0(tmp_main, c(factors[3],": ",i),collapse="")
-        , yy = yy[yy[[factors[3]]]==i, ]
-        , ee = ee[ee[[factors[3]]]==i, ]
+        , y.values = y.values[y.values[[factors[3]]]==i, ]
       ), set.if.null = list(
 
       ))
@@ -308,7 +315,7 @@ apa_lineplot <- function(
       ellipsis.i$args.legend <- defaults(ellipsis.i$args.legend, set = list(plot = ellipsis$args.legend$plot[i]))
 
       # suppresses ylab
-      if(i!=levels(yy[[factors[3]]])[1]){
+      if(i!=levels(y.values[[factors[3]]])[1]){
         ellipsis.i$ylab <- ""
       }
 
@@ -338,12 +345,11 @@ apa_lineplot <- function(
 
 
 
-    for (i in levels(yy[[factors[3]]])){
-      for (j in levels(yy[[factors[4]]])) {
+    for (i in levels(y.values[[factors[3]]])){
+      for (j in levels(y.values[[factors[4]]])) {
         ellipsis.i <- defaults(ellipsis, set = list(
           main = paste0(c(tmp_main,factors[3],": ",i," & ",factors[4],": ",j),collapse="")
-          , yy = yy[yy[[factors[3]]]==i&yy[[factors[4]]]==j,]
-          , ee = ee[ee[[factors[3]]]==i&ee[[factors[4]]]==j,]
+          , y.values = y.values[y.values[[factors[3]]]==i&y.values[[factors[4]]]==j,]
         ), set.if.null = list(
           # nothing
         ))
@@ -352,7 +358,7 @@ apa_lineplot <- function(
         ellipsis.i$args.legend <- defaults(ellipsis.i$args.legend, set = list(plot = ellipsis$args.legend$plot[i, j]))
 
         # suppresses ylab
-        if(j!=levels(yy[[factors[4]]])[1]){
+        if(j!=levels(y.values[[factors[4]]])[1]){
           ellipsis.i$ylab <- ""
         }
         do.call("apa.lineplot.core", ellipsis.i)
@@ -364,7 +370,7 @@ apa_lineplot <- function(
 }
 
 
-apa.lineplot.core<-function(yy, ee, id, dv, factors, intercept=NULL, ...) {
+apa.lineplot.core<-function(y.values, id, dv, factors, intercept=NULL, ...) {
 
   ellipsis <- list(...)
 
@@ -379,22 +385,37 @@ apa.lineplot.core<-function(yy, ee, id, dv, factors, intercept=NULL, ...) {
   id <- gsub(id, pattern = " ", replacement = "_")
   dv <- gsub(dv, pattern = " ", replacement = "_")
 
-  # move to apa_lineplot???
-  if(length(factors) > 1){
-    yy$x <- as.integer(yy[[factors[1]]]) + (as.integer(yy[[factors[2]]])-.5)/(nlevels(yy[[factors[2]]]))*(jit)-.5*jit
-    l2 <- levels(yy[[factors[2]]])
+#   # move to apa_lineplot???
+#   if(length(factors) > 1){
+#     y.values$x <- as.integer(y.values[[factors[1]]]) + (as.integer(y.values[[factors[2]]])-.5)/(nlevels(y.values[[factors[2]]]))*(jit)-.5*jit
+#     l2 <- levels(y.values[[factors[2]]])
+#     onedim <- FALSE
+#   } else {
+#     y.values$x <- as.integer(y.values[[factors[1]]])
+#     l2 <- 1
+#     factors[2] <- "f2"
+#     y.values[["f2"]] <- 1
+#     onedim <- TRUE
+#   }
+
+
+  if(length(factors) > 1) {
+    # convert to matrices
+    y <- tapply(y.values[, "tendency"],list(y.values[, factors[2]], y.values[, factors[1]]), FUN=as.numeric)
+    e <- tapply(y.values[, "dispersion"],list(y.values[, factors[2]], y.values[, factors[1]]), FUN=as.numeric)
     onedim <- FALSE
   } else {
-    yy$x <- as.integer(yy[[factors[1]]])
-    l2 <- 1
     factors[2] <- "f2"
-    yy[["f2"]] <- 1
-    ee[["f2"]] <- 1
+    y.values[["f2"]] <- as.factor(1)
+    y <- y.values[, "tendency"]
+    e <- y.values[, "dispersion"]
     onedim <- TRUE
   }
 
+  space <-1-jit
 
-
+  y.values$x <- as.integer(y.values[[factors[1]]]) - 1 + space/2 + (1-space)/(nlevels(y.values[[factors[[2]]]])-1) * (as.integer(y.values[[factors[2]]])-1)
+  l2 <- levels(y.values[[factors[2]]])
 
   # save parameters for multiple plot functions
   args.legend <- ellipsis$args.legend
@@ -404,12 +425,10 @@ apa.lineplot.core<-function(yy, ee, id, dv, factors, intercept=NULL, ...) {
   args.arrows <- ellipsis$args.arrows
 
   # basic plot
-
-
   ellipsis <- defaults(
     ellipsis
     , set.if.null = list(
-      xlim = c(min(yy$x), max(yy$x))
+      xlim = c(0, max(as.integer(y.values[[factors[1]]])))
     )
     , set = list(
       xaxt = "n"
@@ -432,10 +451,14 @@ apa.lineplot.core<-function(yy, ee, id, dv, factors, intercept=NULL, ...) {
       side = 1
     )
     , set.if.null = list(
-      at = 1:nlevels(yy[[factors[1]]])
-      , labels = levels(yy[[factors[1]]])
+      at = 1:nlevels(y.values[[factors[1]]])-.5
+      , labels = levels(y.values[[factors[1]]])
+      , lwd = 0
+      , lwd.ticks = 1
+      , pos = ellipsis$ylim[1]
     )
   )
+  abline(h = ellipsis$ylim[1])
 
 
   # only draw axis if axis type is not specified or not specified as "n"
@@ -444,9 +467,9 @@ apa.lineplot.core<-function(yy, ee, id, dv, factors, intercept=NULL, ...) {
   }
 
   # convert to matrices
-  x <- tapply(yy[, "x"],list(yy[[factors[1]]], yy[[factors[2]]]), as.numeric)
-  y <- tapply(yy[, dv],list(yy[[factors[1]]], yy[[factors[2]]]), as.numeric)
-  e <- tapply(ee[, dv],list(ee[[factors[1]]], ee[[factors[2]]]), as.numeric)
+  x <- tapply(y.values[, "x"],list(y.values[[factors[1]]], y.values[[factors[2]]]), as.numeric)
+  y <- tapply(y.values[, "tendency"],list(y.values[[factors[1]]], y.values[[factors[2]]]), as.numeric)
+  e <- tapply(y.values[, "dispersion"],list(y.values[[factors[1]]], y.values[[factors[2]]]), as.numeric)
 
 
   # prepare and draw points
@@ -486,7 +509,9 @@ apa.lineplot.core<-function(yy, ee, id, dv, factors, intercept=NULL, ...) {
                             , y1 = y+e
                           )
                           , set.if.null = list(
-                              angle = 90, code = 3, length = .1
+                              angle = 90
+                              , code = 3
+                              , length = (1-space)/nlevels(y.values[[factors[[2]]]]) * 2
                             )
                           )
 
@@ -499,8 +524,8 @@ apa.lineplot.core<-function(yy, ee, id, dv, factors, intercept=NULL, ...) {
     args.legend <- defaults(args.legend
         , set.if.null = list(
           x = "topright"
-          , legend = levels(yy[[factors[2]]])
-          , pch = args.points$pch[1:nlevels(yy[[factors[2]]])]
+          , legend = levels(y.values[[factors[2]]])
+          , pch = args.points$pch[1:nlevels(y.values[[factors[2]]])]
           , lty = args.lines$lty
           , bty = "n"
     ))
