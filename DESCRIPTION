@@ -20,10 +20,11 @@ Imports:
   MBESS,
   boot
 Suggests:
-  testthat,
-  dplyr,
   car,
   afex,
-  downloader
+  ggplot2,
+  dplyr,
+  downloader,
+  testthat
 License: MIT + file LICENSE
 LazyData: yes
