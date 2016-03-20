@@ -447,10 +447,10 @@ apa.lineplot.core<-function(y.values, id, dv, factors, intercept=NULL, ...) {
   # prepare and draw arrows (i.e., error bars)
   args.arrows <- defaults(args.arrows
                           , set = list(
-                            x0 = x
-                            , x1 = x
-                            , y0 = y-e
-                            , y1 = y+e
+                            x0 = t(x)
+                            , x1 = t(x)
+                            , y0 = t(y-e)
+                            , y1 = t(y+e)
                           )
                           , set.if.null = list(
                               angle = 90
@@ -470,7 +470,10 @@ apa.lineplot.core<-function(y.values, id, dv, factors, intercept=NULL, ...) {
           x = "topright"
           , legend = levels(y.values[[factors[2]]])
           , pch = args.points$pch[1:nlevels(y.values[[factors[2]]])]
+          , pt.bg = args.points$col
           , lty = args.lines$lty
+          , lwd = args.lines$lwd
+          , col = args.lines$col
           , bty = "n"
     ))
 
@@ -536,7 +539,7 @@ arrows.matrix <- function(x0, x1, y0, y1, ...) {
 
   args <- list(...)
 
-  for (i in 1:ncol(x)){
+  for (i in 1:ncol(x0)){
     args.i <- lapply(X = args, FUN = sel, i)
     args.i$x0 <- x0[, i]
     args.i$x1 <- x1[, i]
