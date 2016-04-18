@@ -56,7 +56,7 @@
 #'    , las = 1
 #' )
 #'
-#' @familiy apa_beeplot
+#' #@familiy apa_beeplot
 #'
 #' @rdname apa_beeplot
 #' @export
