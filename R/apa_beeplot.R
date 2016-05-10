@@ -1,9 +1,7 @@
 #' Beeswarm plots for factorial designs that conform to APA guidelines
 #'
-#' Wrapper function that creates one or more lineplots from a data.frame containing data from
-#' a factorial design and sets APA-friendly defaults. It sequentially calls \code{\link{plot}},
-#' \code{\link{axis}}, \code{\link{points}}, \code{\link{lines}}, \code{\link{arrows}} and
-#' \code{\link{legend}}, that may be further customized.
+#' Wrapper function that creates one or more beeswarm plots from a data.frame containing data from
+#' a factorial design and sets APA-friendly defaults.
 #'
 #'
 #' @param data A \code{data.frame} that contains the data.
@@ -22,7 +20,7 @@
 #'    case, multiple lines are drawn, where the dimensions of the matrix determine the number of lines to be drawn.
 #' @param args_axis An optional \code{list} that contains further arguments that may be passed to \code{\link{axis}}
 #' @param args_points An optional \code{list} that contains further arguments that may be passed to \code{\link{points}}
-#' @param args_lines An optional \code{list} that contains further arguments that may be passed to \code{\link{lines}}
+#' @param args_swarm An optional \code{list} that contains forther arguments to customize the \code{\link{points}} of the beeswarm.
 #' @param args_arrows An optional \code{list} that contains further arguments that may be passed to \code{\link{arrows}}
 #' @param args_legend An optional \code{list} that contains further arguments that may be passed to \code{\link{legend}}
 #' @param ... Further arguments than can be passed to \code{\link{plot}} function.
@@ -57,9 +55,13 @@
 #'    , level = .34
 #'    , las = 1
 #' )
+#'
+#' #@familiy apa_beeplot
+#'
+#' @rdname apa_beeplot
 #' @export
 
-apa_beeplot <- function(
+apa_beeplot.default <- function(
   data
   , id
   , factors
@@ -72,6 +74,7 @@ apa_beeplot <- function(
   , intercept = NULL
   , args_axis = list()
   , args_points = list()
+  , args_swarm = list()
   , args_lines = list()
   , args_arrows = list()
   , args_legend = list()
@@ -87,6 +90,7 @@ apa_beeplot <- function(
   validate(level, check_class = "numeric", check_range = c(0,1))
   validate(fun_aggregate, check_class = "function", check_length = 1, check_NA = FALSE)
   validate(na.rm, check_class = "logical", check_length = 1)
+  validate(data, check_class = "data.frame", check_cols = c(id, dv, factors), check_NA = FALSE)
   if(!is.null(intercept)) validate(intercept, check_mode = "numeric")
 
   ellipsis <- list(...)
@@ -104,6 +108,7 @@ apa_beeplot <- function(
                        , set.if.null = list(
                          args.axis = args_axis
                          , args.points = args_points
+                         , args.swarm = args_swarm
                          , args.lines = args_lines
                          , args.arrows = args_arrows
                          , args.legend = args_legend
@@ -185,8 +190,10 @@ apa_beeplot <- function(
 
   output$data <- aggregated
 
+  output$args <- list()
 
-  ## Adjust ylim to height of error bars
+
+  ## Adjust ylim to height of error bars and ensure that all points of the swarm are plotted
   if(is.null(ellipsis$ylim)) {
     ellipsis$ylim <- c(
       min(
@@ -218,7 +225,7 @@ apa_beeplot <- function(
       ))
 
     # par(mfrow=par("mfrow"))
-    do.call("apa.beeplot.core", ellipsis)
+    output$args <- do.call("apa.beeplot.core", ellipsis)
   }
 
   ## Three factors
@@ -232,13 +239,14 @@ apa_beeplot <- function(
     tmp_plot <- 1:nlevels(data[[factors[3]]])==nlevels(data[[factors[3]]])
     names(tmp_plot) <- levels(data[[factors[3]]])
 
-    ellipsis$args.legend <- defaults(ellipsis$args.legend
-                                     , set = list(
-
-                                     )
-                                     , set.if.null = list(
-                                       plot = tmp_plot
-                                     )
+    ellipsis$args.legend <- defaults(
+      ellipsis$args.legend
+      , set = list(
+        # nothing
+      )
+      , set.if.null = list(
+        plot = tmp_plot
+      )
     )
 
     if(is.null(ellipsis$args.legend$plot)) {
@@ -270,7 +278,7 @@ apa_beeplot <- function(
         ellipsis.i$ylab <- ""
       }
 
-      do.call("apa.beeplot.core", ellipsis.i)
+      output$args[[paste0("plot", i, j)]] <- do.call("apa.beeplot.core", ellipsis.i)
     }
     par(mfrow=old.mfrow)
   }
@@ -313,7 +321,7 @@ apa_beeplot <- function(
         if(j!=levels(y.values[[factors[4]]])[1]){
           ellipsis.i$ylab <- ""
         }
-        do.call("apa.beeplot.core", ellipsis.i)
+        output$args[[paste0("plot", i, j)]] <- do.call("apa.beeplot.core", ellipsis.i)
       }
     }
     par(mfrow=old.mfrow)
@@ -365,6 +373,7 @@ apa.beeplot.core<-function(aggregated, y.values, id, dv, factors, intercept=NULL
   # save parameters for multiple plot functions
   args.legend <- ellipsis$args.legend
   args.points <- ellipsis$args.points
+  args.swarm <- ellipsis$args.swarm
   args.lines <- ellipsis$args.lines
   args.axis <- ellipsis$args.axis
   args.arrows <- ellipsis$args.arrows
@@ -385,38 +394,35 @@ apa.beeplot.core<-function(aggregated, y.values, id, dv, factors, intercept=NULL
       , args.lines = NULL
       , args.axis = NULL
       , args.arrows = NULL
+      , args.swarm = NULL
     )
   )
 
   do.call("plot.default", ellipsis)
 
-  if(length(factors)==1) {
-    for (i in levels(aggregated[[factors[1]]])){
-      coord <- beeswarm::swarmx(x = aggregated[aggregated[[factors[1]]]==i, "x"]
-                                , y = aggregated[aggregated[[factors[1]]]==i, dv]
-                                , cex = .6
+  args.swarm <- defaults(
+    args.swarm
+    , set.if.null = list(
+      cex = .5
+      , alpha = .3
+    )
+  )
+
+  for (i in levels(aggregated[[factors[1]]])) {
+    for (j in levels(aggregated[[factors[2]]])) {
+      coord <- beeswarm::swarmx(x = aggregated[aggregated[[factors[1]]]==i&aggregated[[factors[2]]]==j, "x"]
+                                , y = aggregated[aggregated[[factors[1]]]==i&aggregated[[factors[2]]]==j, dv]
+                                , cex = args.swarm$cex
                 )
-      aggregated[aggregated[[factors[1]]]==i, "swarmx"] <- coord[["x"]]
-      aggregated[aggregated[[factors[1]]]==i, "swarmy"] <- coord[["y"]]
-    }
-  }
-  if(length(factors)>1) {
-    for (i in levels(aggregated[[factors[1]]])) {
-      for (j in levels(aggregated[[factors[2]]])) {
-        coord <- beeswarm::swarmx(x = aggregated[aggregated[[factors[1]]]==i&aggregated[[factors[2]]]==j, "x"]
-                                  , y = aggregated[aggregated[[factors[1]]]==i&aggregated[[factors[2]]]==j, dv]
-                                  , cex = .6
-                  )
-        aggregated[aggregated[[factors[1]]]==i&aggregated[[factors[2]]]==j, "swarmx"] <-coord[["x"]]
-        aggregated[aggregated[[factors[1]]]==i&aggregated[[factors[2]]]==j, "swarmy"] <- coord[["y"]]
-      }
+      aggregated[aggregated[[factors[1]]]==i&aggregated[[factors[2]]]==j, "swarmx"] <- coord[["x"]]
+      aggregated[aggregated[[factors[1]]]==i&aggregated[[factors[2]]]==j, "swarmy"] <- coord[["y"]]
     }
   }
 
 
 
 
-  # prepare defaults for x axis
+  # prepare x axis
   args.axis <- defaults(args.axis
                         , set = list(
                           side = 1
@@ -443,83 +449,93 @@ apa.beeplot.core<-function(aggregated, y.values, id, dv, factors, intercept=NULL
 
   nc <- nlevels(aggregated[[factors[2]]])
 
+  # prepare (tendency) points
+  args.points <- defaults(
+    args.points
+    , set = list(
+      x = x
+      , y = y
+    )
+    , set.if.null = list(
+      pch = c(21:25,1:20)
+      , col = rep("black", length(l2))
+      , bg = rep("black", length(l2))
+      , cex = rep(1.0, length(l2))
+    )
+  )
+
   bg.colors <- grey((nc:1/(nc)) ^ 0.6, alpha = .4)
   if(!is.null(args.points$bg)){
     tmp <- col2rgb(args.points$bg, alpha = TRUE)
     tmp <- matrix(tmp, ncol = ncol(agg.x), nrow = 4)
     for (j in 1:ncol(agg.x)){
-      bg.colors[j] <- rgb(r = tmp[1, j], g = tmp[2, j], b = tmp[3, j], alpha = tmp[4, j] * .4, maxColorValue = 255)
+      bg.colors[j] <- rgb(r = tmp[1, j], g = tmp[2, j], b = tmp[3, j], alpha = tmp[4, j] * args.swarm$alpha, maxColorValue = 255)
     }
   }
 
   for (i in 1:nrow(agg.x)) {
     for (j in 1:ncol(agg.x)) {
-      points(x=agg.x[i,j][[1]], y = agg.y[i,j][[1]], pch = c(21:25,1:20)[j], bg = bg.colors[j], col = rgb(r = 0, g = 0, b = 0, alpha = .4), cex = .6)
+      points(
+        x=agg.x[i,j][[1]]
+        , y = agg.y[i,j][[1]]
+        , pch = c(21:25,1:20)[j]
+        , bg = bg.colors[j]
+        , col = rgb(r = 0, g = 0, b = 0, alpha = args.swarm$alpha)
+        , cex = args.swarm$cex)
     }
   }
 
 
   # prepare and draw arrows (i.e., error bars)
-  args.arrows <- defaults(args.arrows
-                          , set = list(
-                            x0 = x
-                            , x1 = x
-                            , y0 = y-e
-                            , y1 = y+e
-                          )
-                          , set.if.null = list(
-                            angle = 90, code = 3, length = .1
-                          )
+  args.arrows <- defaults(
+    args.arrows
+    , set = list(
+      x0 = t(x)
+      , x1 = t(x)
+      , y0 = t(y-e)
+      , y1 = t(y+e)
+    )
+    , set.if.null = list(
+      angle = 90, code = 3, length = .1
+    )
   )
 
-
+  # draw arrows (measure of dispersion)
   do.call("arrows", args.arrows)
 
-
-  # prepare and draw points
-  args.points <- defaults(args.points
-                          , set = list(
-                            x = x
-                            , y = y
-                          )
-                          , set.if.null = list(
-                            pch = c(21:25,1:20)
-                            , col = rep("black", length(l2))
-                            , bg = rep("black", length(l2))
-                            , cex = rep(1.0, length(l2))
-                          )
-  )
-
+  # draw points (central tendency)
   do.call("points.matrix", args.points)
 
-#   # prepare and draw lines
-#   args.lines <- defaults(args.lines
-#                          , set = list(
-#                            x = x
-#                            , y = y
-#                          )
-#                          , set.if.null = list(
-#                            lty = 1:6
-#                            , col = rep("black", length(l2))
-#                          )
-#   )
-
+  # # prepare and draw lines
+  # args.lines <- defaults(
+  #   args.lines
+  #   , set = list(
+  #    x = x
+  #    , y = y
+  #   )
+  #   , set.if.null = list(
+  #    lty = 1:6
+  #    , col = rep("black", length(l2))
+  #   )
+  # )
+  #
   # do.call("lines", args.lines)
-
-
 
   # prepare and draw legend
   if(onedim==FALSE) {
 
-    args.legend <- defaults(args.legend
-                            , set.if.null = list(
-                              x = "topright"
-                              , legend = levels(y.values[[factors[2]]])
-                              , pch = args.points$pch[1:nlevels(y.values[[factors[2]]])]
-                              , lty = args.lines$lty
-                              , bty = "n"
-                              , pt.bg = args.points$bg
-                            ))
+    args.legend <- defaults(
+      args.legend
+      , set.if.null = list(
+        x = "topright"
+        , legend = levels(y.values[[factors[2]]])
+        , pch = args.points$pch[1:nlevels(y.values[[factors[2]]])]
+        , lty = args.lines$lty
+        , bty = "n"
+        , pt.bg = args.points$bg
+        , pt.cex = args.points$cex
+      )
+    )
 
     do.call("legend", args.legend)
   }
@@ -540,6 +556,42 @@ apa.beeplot.core<-function(aggregated, y.values, id, dv, factors, intercept=NULL
       lines(x = ellipsis$xlim, y = rep(intercept,2))
     }
   }
-  return(list(ellipsis, args.axis, args.points, args.lines, args.legend))
+  invisible(list(
+    "plot" = ellipsis
+    , "axis" = args.axis
+    , "points" = args.points
+    , "swarm" = args.swarm
+    , "legend" = args.legend))
 }
 
+
+
+#' @rdname apa_beeplot
+#' @export
+
+apa_beeplot <- function(x, ...){
+  UseMethod("apa_beeplot")
+}
+
+
+#' @rdname apa_beeplot
+#' @method apa_beeplot afex_aov
+#' @export
+
+apa_beeplot.afex_aov <- function(x, ...){
+
+  ellipsis <- list(...)
+
+  args <- attributes(x)
+
+  ellipsis <- defaults(
+    ellipsis
+    , set = list(
+      "data" = x$data$long
+      , "id" = args$id
+      , "dv" = args$dv
+      , "factors" = c(args$between, args$within)
+    )
+  )
+  do.call("apa_beeplot.default", ellipsis)
+}

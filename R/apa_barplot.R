@@ -77,6 +77,7 @@ apa_barplot <- function(
   validate(level, check_class = "numeric", check_range = c(0,1))
   validate(fun_aggregate, check_class = "function", check_length = 1, check_NA = FALSE)
   validate(na.rm, check_class = "logical", check_length = 1)
+  validate(data, check_class = "data.frame", check_cols = c(id, dv, factors), check_NA = FALSE)
   if(!is.null(intercept)) validate(intercept, check_class = "numeric")
 
   # Prepare data
@@ -407,6 +408,8 @@ apa.barplot.core<-function(y.values, id, dv, factors, ...) {
 
   do.call("title", args.title)
 
+  y.values[["col"]] <- ellipsis$col[as.integer(y.values[[factors[2]]])]
+
   args.rect <- defaults(
     list()
     , set.if.null = list(
@@ -421,11 +424,11 @@ apa.barplot.core<-function(y.values, id, dv, factors, ...) {
       )
     )
     , set = list(
-      col = ellipsis$col
+      col = y.values[["col"]]
       , xpd = FALSE
     )
   )
-  # print(args.rect)
+
   do.call("rect", args.rect)
 
   # convert to matrices
@@ -436,10 +439,10 @@ apa.barplot.core<-function(y.values, id, dv, factors, ...) {
   # prepare and draw arrows (i.e., error bars)
   args.arrows <- defaults(args.arrows
                           , set = list(
-                            x0 = x
-                            , x1 = x
-                            , y0 = y-e
-                            , y1 = y+e
+                            x0 = t(x)
+                            , x1 = t(x)
+                            , y0 = t(y-e)
+                            , y1 = t(y+e)
                           )
                           , set.if.null = list(
                             angle = 90
