@@ -438,6 +438,10 @@ apa.lineplot.core<-function(y.values, id, dv, factors, intercept=NULL, ...) {
   do.call("lines", args.lines)
 
 
+  nc <- nlevels(y.values[[factors[2]]])
+  colors <- (nc:1/(nc)) ^ 0.6
+
+
   # prepare and draw points
   args.points <- defaults(args.points
     , set = list(
@@ -447,7 +451,7 @@ apa.lineplot.core<-function(y.values, id, dv, factors, intercept=NULL, ...) {
     , set.if.null = list(
       pch = c(21:25,1:20)
       , col = rep("black", length(l2))
-      , bg = gray((1:nlevels(y.values[[factors[2]]])-1)/(nlevels(y.values[[factors[2]]])-1))
+      , bg = gray(colors)
     )
   )
 
@@ -522,8 +526,8 @@ points.matrix <- function(x, y, type = "p", ...) {
 
   for (i in 1:ncol(x)){
     args.i <- lapply(X = args, FUN = sel, i)
-    args.i$x <- x[, i]
-    args.i$y <- y[, i]
+    args.i$x <- unlist(x[, i])
+    args.i$y <- unlist(y[, i])
     do.call("points", args.i)
   }
 }
